@@ -35,8 +35,11 @@ const createFor = (username) => {
   let attempts = 0
   let lastErrorText = ''
   let reconnectTimer = null
+  let forceLongDelay = false
+  let startedAt = 0
   const start = () => {
     if (reconnectTimer) { try { clearTimeout(reconnectTimer) } catch {} ; reconnectTimer = null }
+    startedAt = Date.now()
     const bot = mineflayer.createBot({
       host,
       port,
@@ -136,6 +139,12 @@ const createFor = (username) => {
 
     bot.on('end', () => {
       console.log(`[${username}] 已斷線`)
+      try {
+        if (bot._autoChatTimer) {
+          clearInterval(bot._autoChatTimer)
+          bot._autoChatTimer = null
+        }
+      } catch {}
       schedule()
     })
 
@@ -152,6 +161,7 @@ const createFor = (username) => {
         m.includes('client timed out') ||
         m.includes('keepalive')
       ) {
+        if (Date.now() - startedAt < 20000) forceLongDelay = true
         try { bot.end('error') } catch {}
         schedule()
       }
@@ -161,6 +171,7 @@ const createFor = (username) => {
       if (reconnectTimer) return
       attempts += 1
       let delay = Math.min(maxDelay, baseDelay * Math.pow(2, attempts - 1))
+      if (forceLongDelay) { delay = Math.max(delay, rateLimitDelay); forceLongDelay = false }
       if (lastErrorText.includes('RateLimiter disallowed request')) delay = Math.max(delay, rateLimitDelay)
       delay += Math.floor(Math.random() * jitterMs)
       const secs = Math.ceil(delay / 1000)
@@ -183,8 +194,14 @@ const setupAutoChat = (bot, username) => {
   if (!chatCfg.enabled) return
   const intervalMs = Math.max(5, Number(chatCfg.intervalSeconds || 60)) * 1000
   const messages = Array.isArray(chatCfg.messages) && chatCfg.messages.length > 0 ? chatCfg.messages : ['Hello']
+  try {
+    if (bot._autoChatTimer) {
+      clearInterval(bot._autoChatTimer)
+      bot._autoChatTimer = null
+    }
+  } catch {}
   let i = 0
-  setInterval(() => {
+  bot._autoChatTimer = setInterval(() => {
     const msg = messages[i % messages.length]
     try { bot.chat(msg) } catch {}
     i++
@@ -211,7 +228,11 @@ const handleCommand = (bot, sender, message) => {
   }
 }
 
-for (const u of accounts) createFor(u)
+const initialStaggerMs = Math.max(0, Number(cfg.initialStaggerSeconds || 20)) * 1000
+accounts.forEach((u, i) => {
+  const d = i * initialStaggerMs + Math.floor(Math.random() * jitterMs)
+  setTimeout(() => { try { createFor(u) } catch (e) { console.error(`[${u}] 啟動失敗`, e) } }, d)
+})
 
 const extractRunCommands = (msg) => {
   const out = []
