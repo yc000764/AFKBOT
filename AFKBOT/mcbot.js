@@ -26,6 +26,21 @@ const jitterMs = Math.max(0, Number(reconnectCfg.jitterMs || 5000))
 const accounts = Array.isArray(cfg.accounts) ? cfg.accounts : []
 const whitelist = new Set(Array.isArray(cfg.whitelist) ? cfg.whitelist : [])
 const chatCfg = cfg.chat || { enabled: false }
+const maxConcurrentConnects = Math.max(1, Number((cfg.multi && cfg.multi.maxConcurrentConnects) || 2))
+let activeConnects = 0
+const gateQueue = []
+const acquireGate = () => {
+  if (activeConnects < maxConcurrentConnects) {
+    activeConnects++
+    return Promise.resolve()
+  }
+  return new Promise((resolve) => gateQueue.push(() => { activeConnects++; resolve() }))
+}
+const releaseGate = () => {
+  if (activeConnects > 0) activeConnects--
+  const next = gateQueue.shift()
+  if (next) next()
+}
 
 const ensureDir = (p) => { try { fs.mkdirSync(p, { recursive: true }) } catch {} }
 const profilesRoot = path.join(process.cwd(), 'profiles')
@@ -37,9 +52,12 @@ const createFor = (username) => {
   let reconnectTimer = null
   let forceLongDelay = false
   let startedAt = 0
-  const start = () => {
+  const start = async () => {
     if (reconnectTimer) { try { clearTimeout(reconnectTimer) } catch {} ; reconnectTimer = null }
     startedAt = Date.now()
+    await acquireGate()
+    let released = false
+    const releaseOnce = () => { if (!released) { released = true; releaseGate() } }
     const bot = mineflayer.createBot({
       host,
       port,
@@ -62,6 +80,7 @@ const createFor = (username) => {
 
     bot.once('spawn', () => {
       console.log(`[${username}] 已登入伺服器`)
+      releaseOnce()
       if (bot.autoEat) {
         if (typeof bot.autoEat.setOpts === 'function') {
           bot.autoEat.setOpts({ priority: 'foodPoints', minHunger: 16 })
@@ -140,6 +159,7 @@ const createFor = (username) => {
       const text = sanitizeTail(flattenText(obj))
       const zh = sanitizeTail(translateReason(text))
       console.log(`[${username}] 已被伺服器踢出${zh ? '：' + zh : ''}`)
+      releaseOnce()
       schedule()
     })
 
@@ -151,6 +171,7 @@ const createFor = (username) => {
           bot._autoChatTimer = null
         }
       } catch {}
+      releaseOnce()
       schedule()
     })
 
@@ -169,6 +190,7 @@ const createFor = (username) => {
       if (transient) {
         if (Date.now() - startedAt < 20000) forceLongDelay = true
         try { if (isConnected(bot)) bot.end('error') } catch {}
+        releaseOnce()
         const first = lastErrorText.split('\n')[0]
         console.log(`[${username}] 連線中斷：${first}`)
         schedule()
@@ -188,16 +210,18 @@ const createFor = (username) => {
       console.log(`[${username}] 將在 ${secs} 秒後重新連線`)
       reconnectTimer = setTimeout(() => {
         reconnectTimer = null
-        try {
-          start()
-        } catch (e) {
-          console.error(`[${username}] 重新連線失敗`, e)
-          schedule()
-        }
+        ;(async () => {
+          try {
+            await start()
+          } catch (e) {
+            console.error(`[${username}] 重新連線失敗`, e)
+            schedule()
+          }
+        })()
       }, delay)
     }
   }
-  start()
+  ;(async () => { try { await start() } catch (e) { console.error(`[${username}] 啟動失敗`, e); setTimeout(() => schedule(), 1000) } })()
 }
 
 const setupAutoChat = (bot, username) => {

@@ -13,6 +13,10 @@
     "rateLimitDelaySeconds": 900,
     "jitterMs": 5000
   },
+  "initialStaggerSeconds": 10,
+  "multi": {
+    "maxConcurrentConnects": 2
+  },
   "chat": {
     "enabled": true,
     "intervalSeconds": 36000,
