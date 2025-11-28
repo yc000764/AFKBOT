@@ -156,9 +156,8 @@ const createFor = (username) => {
 
     bot.on('error', (err) => {
       lastErrorText = String(err && err.message ? err.message : err)
-      console.error(`[${username}] 錯誤`, err)
       const m = lastErrorText.toLowerCase()
-      if (
+      const transient = (
         m.includes('econnreset') ||
         m.includes('etimedout') ||
         m.includes('epipe') ||
@@ -166,11 +165,16 @@ const createFor = (username) => {
         m.includes('stream destroyed') ||
         m.includes('client timed out') ||
         m.includes('keepalive')
-      ) {
+      )
+      if (transient) {
         if (Date.now() - startedAt < 20000) forceLongDelay = true
         try { if (isConnected(bot)) bot.end('error') } catch {}
+        const first = lastErrorText.split('\n')[0]
+        console.log(`[${username}] 連線中斷：${first}`)
         schedule()
+        return
       }
+      console.error(`[${username}] 錯誤`, err)
     })
 
     const schedule = () => {

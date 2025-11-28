@@ -16,6 +16,7 @@
   "chat": {
     "enabled": true,
     "intervalSeconds": 36000,
+    "agreeOnSpawn": true,
     "messages": [
       "嗨，我是自動化機器人",
       "這是定時訊息"
