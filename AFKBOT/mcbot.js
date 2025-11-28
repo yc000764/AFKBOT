@@ -72,6 +72,12 @@ const createFor = (username) => {
         }
       }
       setupAutoChat(bot, username)
+      try {
+        if (chatCfg && chatCfg.agreeOnSpawn) {
+          const d = 500 + Math.floor(Math.random() * 1500)
+          setTimeout(() => safeChat(bot, '/agree'), d)
+        }
+      } catch {}
     })
 
     bot.on('health', () => {
