@@ -99,21 +99,21 @@ const createFor = (username) => {
       for (const c of cmds) {
         const s = String(c)
         if (s.toLowerCase().includes('agree') || s.includes('同意')) {
-          try { bot.chat(s) } catch {}
+          safeChat(bot, s)
         }
       }
       const m1 = text && text.match(/^\[系統\]\s+(\S+)\s+想要傳送到\s+你\s+的位置$/)
       if (m1) {
         const sender = m1[1]
         if (whitelist.size === 0 || whitelist.has(sender)) {
-          try { bot.chat('/tpaccept') } catch {}
+          safeChat(bot, '/tpaccept')
         }
       }
       const m2 = text && text.match(/^\[系統\]\s+(\S+)\s+想要你傳送到\s+該玩家\s+的位置$/)
       if (m2) {
         const sender = m2[1]
         if (whitelist.size === 0 || whitelist.has(sender)) {
-          try { bot.chat('/tpaccept') } catch {}
+          safeChat(bot, '/tpaccept')
         }
       }
     })
@@ -162,7 +162,7 @@ const createFor = (username) => {
         m.includes('keepalive')
       ) {
         if (Date.now() - startedAt < 20000) forceLongDelay = true
-        try { bot.end('error') } catch {}
+        try { if (isConnected(bot)) bot.end('error') } catch {}
         schedule()
       }
     })
@@ -203,7 +203,7 @@ const setupAutoChat = (bot, username) => {
   let i = 0
   bot._autoChatTimer = setInterval(() => {
     const msg = messages[i % messages.length]
-    try { bot.chat(msg) } catch {}
+    safeChat(bot, msg)
     i++
   }, intervalMs)
 }
@@ -215,16 +215,16 @@ const handleCommand = (bot, sender, message) => {
   const cmd = parts[1] || ''
   if (cmd === 'say') {
     const text = parts.slice(2).join(' ') || 'Hi'
-    bot.chat(text)
+    safeChat(bot, text)
   } else if (cmd === 'eat') {
     if (bot.autoEat) {
       if (typeof bot.autoEat.enableAuto === 'function') bot.autoEat.enableAuto()
       else if (typeof bot.autoEat.enable === 'function') bot.autoEat.enable()
     }
   } else if (cmd === 'status') {
-    bot.chat(`food=${bot.food} hp=${bot.health}`)
+    safeChat(bot, `food=${bot.food} hp=${bot.health}`)
   } else if (cmd === 'agree') {
-    bot.chat('/agree')
+    safeChat(bot, '/agree')
   }
 }
 
@@ -270,4 +270,18 @@ const translateReason = (text) => {
 const sanitizeTail = (s) => {
   if (!s) return s
   return String(s).replace(/"\}\],?\s*"text"\s*:\s*""\}?$/,'').trim()
+}
+
+const isConnected = (bot) => {
+  try {
+    return !!(bot && bot._client && bot._client.state === 'connected' && bot._client.socket && !bot._client.socket.destroyed)
+  } catch {
+    return false
+  }
+}
+
+const safeChat = (bot, msg) => {
+  try {
+    if (isConnected(bot)) bot.chat(msg)
+  } catch {}
 }
