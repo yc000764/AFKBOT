@@ -58,13 +58,15 @@ const createFor = (username) => {
     await acquireGate()
     let released = false
     const releaseOnce = () => { if (!released) { released = true; releaseGate() } }
+    const profileDir = path.join(profilesRoot, username)
+    ensureDir(profileDir)
     const bot = mineflayer.createBot({
       host,
       port,
       username,
       version,
       checkTimeoutInterval: checkTimeoutMs,
-      profilesFolder: profilesRoot,
+      profilesFolder: profileDir,
       auth: 'microsoft',
       onMsaCode: (data) => {
         console.log(`[${username}] 請前往 ${data.verification_uri} 並輸入代碼 ${data.user_code}`)
