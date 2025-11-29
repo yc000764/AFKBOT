@@ -1,0 +1,33 @@
+{
+  "host": "mcfallout.net",
+  "port": 25565,
+  "version": false,
+  "accounts": [
+    "帳號A",
+    "帳號B"
+  ],
+  "checkTimeoutMs": 90000,
+  "reconnect": {
+    "baseDelaySeconds": 5,
+    "maxDelaySeconds": 300,
+    "rateLimitDelaySeconds": 1200,
+    "jitterMs": 5000
+  },
+  "initialStaggerSeconds": 25,
+  "multi": {
+    "maxConcurrentConnects": 1
+  },
+  "chat": {
+    "enabled": true,
+    "intervalSeconds": 36000,
+    "agreeOnSpawn": true,
+    "messages": [
+      "嗨，我是自動化機器人",
+      "這是定時訊息"
+    ]
+  },
+  "whitelist": [
+    "白名單A",
+    "白名單B"
+  ]
+}
