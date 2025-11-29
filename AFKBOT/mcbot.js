@@ -182,6 +182,7 @@ const createFor = (username) => {
       const m = lastErrorText.toLowerCase()
       const transient = (
         m.includes('econnreset') ||
+        m.includes('econnaborted') ||
         m.includes('etimedout') ||
         m.includes('epipe') ||
         m.includes('socket hang up') ||

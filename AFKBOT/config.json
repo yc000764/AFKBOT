@@ -1,21 +1,21 @@
 {
   "host": "mcfallout.net",
   "port": 25565,
-  "version": "1.18.2",
+  "version": false,
   "accounts": [
     "帳號A",
     "帳號B"
   ],
-  "checkTimeoutMs": 60000,
+  "checkTimeoutMs": 90000,
   "reconnect": {
     "baseDelaySeconds": 5,
     "maxDelaySeconds": 300,
-    "rateLimitDelaySeconds": 900,
+  "rateLimitDelaySeconds": 1200,
     "jitterMs": 5000
   },
-  "initialStaggerSeconds": 10,
+  "initialStaggerSeconds": 25,
   "multi": {
-    "maxConcurrentConnects": 2
+    "maxConcurrentConnects": 1
   },
   "chat": {
     "enabled": true,
